@@ -25,7 +25,7 @@ public class UserActionRecommenderTask {
             public String map(String s) throws Exception {
                 String[] tmp = s.split(",");
                 String rowkey = tmp[0] + "_" + tmp[1] + "_" + tmp[3];
-                System.out.println(rowkey);
+                System.out.println("rowkey: " + rowkey);
                 // record user rate info
                 //  String msg = userId + "," + productId + "," + score + "," + System.currentTimeMillis() / 1000;
                 HbaseClient.putData("rating", rowkey, "log", "productId", tmp[1]);

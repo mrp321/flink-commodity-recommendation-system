@@ -3,7 +3,7 @@
 create 'rating', {NAME => 'p'}
 create 'userProduct', {NAME => 'p'}
 create 'itemCFRecommend', {NAME => 'p'}
-create 'goodProdcuts', {NAME => 'p'}
+create 'goodProducts', {NAME => 'p'}
 create 'historyHotProducts', {NAME => 'p'}
 create 'onlineHotProducts', {NAME => 'p'}
 create 'onlineRecommend', {NAME => 'p'}

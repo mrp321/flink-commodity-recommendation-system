@@ -5,11 +5,9 @@ import com.ly.client.RedisClient;
 import com.ly.entity.RecommendEntity;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.configuration.Configuration;
 import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
@@ -45,9 +43,18 @@ public class OnlineRecommendMapFunction implements MapFunction<String, String> {
         // 2. 从 hbase 中获取当前产品的相似度列表
         // table：itemCFRecommend  familyName: p rowKey: productId
         List<Map.Entry> entryList = HbaseClient.getRow("itemCFRecommend", productId);
+        if (entryList.size() == 0) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("===================\n推荐结果{userId: }")
+                    .append(userId)
+                    .append("\n")
+                    .append("productList:\n 暂未查询到任何推荐信息");
+            sb.append("\n");
+            return sb.toString();
+        }
         // 转换成 dataset 使用
         HashSet<RecommendEntity> recommendEntitySet = new HashSet<>();
-        for(Map.Entry<String, Double> entry : entryList) {
+        for (Map.Entry<String, Double> entry : entryList) {
             RecommendEntity recommendEntity = new RecommendEntity(entry.getKey(), entry.getValue());
             recommendEntitySet.add(recommendEntity);
             System.out.println(recommendEntity);

@@ -1,10 +1,10 @@
 package com.ly.client;
 
 import com.ly.util.Property;
-import org.apache.flink.table.expressions.In;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
@@ -73,14 +73,14 @@ public class HbaseClient {
      * @throws IOException
      */
     public static List<Map.Entry> getRow(String tableName, String rowKey) throws IOException {
-        System.setProperty("hadoop.home.dir", "D:\\Program\\hadoop");
+//        System.setProperty("hadoop.home.dir", "D:\\Program\\hadoop");
         Table table = conn.getTable(TableName.valueOf(tableName));
         byte[] row = Bytes.toBytes(rowKey);
         Get get = new Get(row);
         Result r = table.get(get);
         HashMap<String, Double> rst = new HashMap<>();
-        if(r.isEmpty()) {
-            return null;
+        if (r.isEmpty()) {
+            return new ArrayList<>(0);
         }
 
         for (Cell cell : r.listCells()){
@@ -109,8 +109,51 @@ public class HbaseClient {
     public static void putData(String tablename, String rowkey, String famliyname,String column,String data) throws Exception {
         Table table = conn.getTable(TableName.valueOf(tablename));
         Put put = new Put(rowkey.getBytes());
-        put.addColumn(famliyname.getBytes(),column.getBytes(),data.getBytes());
-        table.put(put);
+        put.addColumn(famliyname.getBytes(), column.getBytes(), data.getBytes());
+        try {
+            table.put(put);
+        } catch (Exception e) {
+            Throwable[] throwables = e.getSuppressed();
+            if (throwables != null && throwables.length > 0) {
+                for (Throwable t : throwables) {
+                    if (t instanceof NoSuchColumnFamilyException) {
+                        System.out.println("the column family " + famliyname + " of table " + tablename + " does not exist, now create this colun family...");
+                        createColumnFamilyIfNecessary(tablename, famliyname);
+                        table.put(put);
+                        break;
+                    }
+                }
+            }
+
+        }
+
+    }
+
+    /**
+     * 创建可能不存在的列族名
+     *
+     * @param tablename
+     * @param famliyname
+     */
+    private static void createColumnFamilyIfNecessary(String tablename, String famliyname) {
+        try {
+            //disable table
+            admin.disableTable(TableName.valueOf(tablename));
+            //get the TableDescriptor of target table
+            HTableDescriptor newtd = admin.getTableDescriptor(TableName.valueOf(tablename));
+            //create HColumnDescriptor for new column family
+            HColumnDescriptor newhcd = new HColumnDescriptor(famliyname);
+//                    newhcd.setMaxVersions(10);
+            newhcd.setKeepDeletedCells(KeepDeletedCells.TRUE);
+            //add the new column family(HColumnDescriptor) to HTableDescriptor
+            newtd.addFamily(newhcd);
+            //modify target table  struture
+            admin.modifyTable(TableName.valueOf(tablename), newtd);
+            admin.enableTable(TableName.valueOf(tablename));
+        } catch (Exception e) {
+            //  TODO : handle exception
+            e.printStackTrace();
+        }
     }
 
     /**
